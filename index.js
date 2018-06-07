@@ -1,34 +1,30 @@
 // require() é como um import
 const express = require('express');
-// passport é um middleware para autenticação oauth
+// O mongoose modela objetos de nossa aplicação para o MongoDB
+// É como um ORM
+const mongoose = require('mongoose');
+const cookieSession = require('cookie-session');
 const passport = require('passport');
-// O passport utiliza "Estratégias" para cada provedor, como Google ou GitHub
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-// Chaves definidas em keys.js
 const keys = require('./config/keys');
+require('./models/User');
+// requisitamos o passport.js deste projeto
+require('./services/passport');
+
+// Especificamos o banco de dados MongoDB ao qual o mongoose se conectará
+mongoose.connect(keys.mongoURI);
 
 const app = express();
 
-// Configuramos o passport para utilizar a GoogleStrategy
-// Configuramos o GoogleStrategy com as chaves da API OAuth
-// Configuramos o endereço de callback, para o qual redirecionaremos o usuário autenticado
-passport.use(new GoogleStrategy(
-	{
-		clientID: keys.googleClientID,
-		clientSecret: keys.googleClientSecret,
-		callbackURL: '/auth/google/callback'
-	},
-	accessToken => {
-		console.log(accessToken);
-	}
-));
-
-app.get(
-	'/auth/google',
-	passport.authenticate('google', {
-		scope: ['profile', 'email']
+app.use(
+	cookieSession({
+		maxAge: 30 * 24 * 60 * 60 * 1000,
+		keys: [ keys.cookieKey ]
 	})
 );
+app.use(passport.initialize());
+app.use(passport.session());
+
+require('./routes/authRoutes')(app);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT);
